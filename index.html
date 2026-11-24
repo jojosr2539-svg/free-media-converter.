@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free Media Converter</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#0b1020;color:white;
+ font-family:Arial,sans-serif;padding:20px;
+}
+.container{max-width:760px;margin:auto}
+header{text-align:center;padding:30px 0}
+.logo{font-size:30px;font-weight:900;color:#60a5fa}
+.sub{color:#94a3b8}
+.panel{
+ background:#151e32;border:1px solid #293650;
+ padding:22px;border-radius:18px;margin-bottom:18px;
+}
+.upload{
+ border:2px dashed #526580;border-radius:14px;
+ padding:35px 15px;text-align:center;
+ cursor:pointer;background:#101a2c;
+}
+.upload input{display:none}
+.file{color:#93c5fd;margin-top:12px;word-break:break-all}
+button,select{
+ padding:13px;border-radius:10px;border:0;
+ font-size:15px;
+}
+select{background:#25334b;color:white;width:100%;margin:8px 0}
+button{
+ background:#2563eb;color:white;font-weight:bold;
+ cursor:pointer;width:100%;margin-top:12px;
+}
+button:disabled{opacity:.45}
+.progress{
+ height:10px;background:#334155;
+ border-radius:20px;overflow:hidden;margin-top:15px;
+}
+.bar{height:100%;width:0;background:#38bdf8}
+.status{color:#cbd5e1;font-size:14px;margin-top:12px}
+.result{display:none;margin-top:18px}
+.download{
+ display:block;text-align:center;padding:14px;
+ background:#16a34a;color:white;border-radius:10px;
+ text-decoration:none;font-weight:bold;margin-top:12px;
+}
+footer{text-align:center;color:#64748b;padding:20px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+ <div class="logo">MEDIA CONVERTER</div>
+ <h1>เครื่องมือแปลงไฟล์ออนไลน์</h1>
+ <div class="sub">MP3 • MP4 • WAV • M4A</div>
+</header>
+
+<div class="panel">
+ <h2>📁 เลือกไฟล์ของคุณ</h2>
+ <label class="upload">
+  <div style="font-size:40px">📂</div>
+  <strong>แตะเพื่อเลือกไฟล์</strong>
+  <p class="sub">เลือกไฟล์เสียงหรือวิดีโอ</p>
+  <input type="file" id="file" accept="audio/*,video/*">
+ </label>
+ <div class="file" id="filename">ยังไม่ได้เลือกไฟล์</div>
+</div>
+
+<div class="panel">
+ <h2>🎵 รูปแบบไฟล์</h2>
+ <select id="format">
+  <option value="mp3">MP3</option>
+  <option value="mp4">MP4</option>
+  <option value="wav">WAV</option>
+  <option value="m4a">M4A</option>
+ </select>
+
+ <h2>🔊 คุณภาพเสียง</h2>
+ <select id="quality">
+  <option value="128">128 kbps</option>
+  <option value="192" selected>192 kbps</option>
+  <option value="320">320 kbps</option>
+ </select>
+
+ <button id="convert" disabled>เริ่มแปลงไฟล์</button>
+
+ <div class="progress">
+  <div class="bar" id="bar"></div>
+ </div>
+
+ <div class="status" id="status">
+  กรุณาเลือกไฟล์ก่อนเริ่มต้น
+ </div>
+
+ <div class="result" id="result">
+  <h3>✅ แปลงไฟล์สำเร็จ</h3>
+  <a id="download" class="download" download>
+   ⬇ ดาวน์โหลดไฟล์
+  </a>
+ </div>
+</div>
+
+<div class="panel">
+ <h2>เกี่ยวกับเรา</h2>
+ <p class="sub">
+ เครื่องมือแปลงไฟล์เสียงและวิดีโอออนไลน์
+ ประมวลผลในเบราว์เซอร์ของคุณ
+ </p>
+</div>
+
+<footer>FREE MEDIA CONVERTER © 2026</footer>
+</div>
+
+<script type="module">
+import { FFmpeg } from
+'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+
+import { toBlobURL } from
+'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js';
+
+const ffmpeg = new FFmpeg();
+
+const fileInput = document.getElementById('file');
+const convertBtn = document.getElementById('convert');
+const statusBox = document.getElementById('status');
+const bar = document.getElementById('bar');
+
+let selectedFile = null;
+let ready = false;
+let outputURL = null;
+
+function status(message){
+ statusBox.textContent = message;
+}
+
+fileInput.addEventListener('change',()=>{
+ selectedFile=fileInput.files[0];
+ if(!selectedFile)return;
+
+ document.getElementById('filename').textContent =
+ selectedFile.name;
+
+ convertBtn.disabled=false;
+ document.getElementById('result').style.display='none';
+});
+
+async function loadEngine(){
+ if(ready)return;
+
+ status('กำลังโหลดเครื่องมือแปลงไฟล์...');
+
+ const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+
+ await ffmpeg.load({
+  coreURL:await toBlobURL(
+   base+'/ffmpeg-core.js','text/javascript'),
+  wasmURL:await toBlobURL(
+   base+'/ffmpeg-core.wasm','application/wasm')
+ });
+
+ ready=true;
+}
+
+ffmpeg.on('progress',({progress})=>{
+ bar.style.width=
+ Math.max(0,Math.min(100,progress*100))+'%';
+});
+
+convertBtn.addEventListener('click',async()=>{
+ if(!selectedFile)return;
+
+ convertBtn.disabled=true;
+ bar.style.width='0%';
+
+ const inputName='input_'+Date.now();
+ const ext=document.getElementById('format').value;
+ const outputName='converted.'+ext;
+ const quality=document.getElementById('quality').value;
+
+ try{
+  await loadEngine();
+
+  status('กำลังอ่านไฟล์...');
+
+  await ffmpeg.writeFile(
+   inputName,
+   new Uint8Array(await selectedFile.arrayBuffer())
+  );
+
+  let args=['-i',inputName];
+
+  if(ext==='mp3'){
+   args.push('-vn','-codec:a','libmp3lame',
+   '-b:a',quality+'k');
+  }
+  else if(ext==='wav'){
+   args.push('-vn','-c:a','pcm_s16le',
+   '-ar','44100','-ac','2');
+  }
+  else if(ext==='m4a'){
+   args.push('-vn','-c:a','aac',
+   '-b:a',quality+'k');
+  }
+  else if(ext==='mp4'){
+   args.push('-c:v','libx264',
+   '-preset','ultrafast','-crf','28',
+   '-c:a','aac','-b:a',quality+'k',
+   '-movflags','+faststart');
+  }
+
+  args.push(outputName);
+
+  status('กำลังแปลงไฟล์ กรุณารอสักครู่...');
+
+  await ffmpeg.exec(args);
+
+  const data=await ffmpeg.readFile(outputName);
+
+  const mime={
+   mp3:'audio/mpeg',
+   mp4:'video/mp4',
+   wav:'audio/wav',
+   m4a:'audio/mp4'
+  }[ext];
+
+  if(outputURL)URL.revokeObjectURL(outputURL);
+
+  outputURL=URL.createObjectURL(
+   new Blob([data],{type:mime})
+  );
+
+  const link=document.getElementById('download');
+  link.href=outputURL;
+  link.download='converted.'+ext;
+
+  document.getElementById('result').style.display='block';
+
+  bar.style.width='100%';
+  status('แปลงไฟล์สำเร็จแล้ว');
+
+  await ffmpeg.deleteFile(inputName);
+  await ffmpeg.deleteFile(outputName);
+
+ }catch(error){
+  console.error(error);
+  status('เกิดข้อผิดพลาด: '+error.message);
+ }finally{
+  convertBtn.disabled=false;
+ }
+});
+</script>
+</body>
+</html>
